@@ -1,0 +1,11 @@
+{
+  "file_name": "Team_Score_Device.verse",
+  "questions": [
+    "How do I track and display scores for two different teams?",
+    "What is the Verse code for a simple team score system based on eliminations?",
+    "How can I use the Team Settings device to count enemy eliminations for a score?"
+  ],
+  "explanation": "This script defines a 'Team_Score_Device' that keeps track of the score for a Blue Team and a Red Team. \n\n- **How it Works:**\n  1. It uses two '@editable' 'team_settings_and_inventory_device' instances, one for each team.\n  2. In 'OnBegin', it subscribes to the 'EnemyEliminatedEvent' for both team devices.\n  3. When a player on the Blue Team eliminates an enemy, the script increments the 'TeamBlueScore' variable.\n  4. It then calls 'UpdateMainHUD' to format a string with both team scores and displays it on a central 'hud_message_device'.\n  5. The same logic applies to the Red Team.",
+  "code": "using { /Fortnite.com/Devices }\nusing { /Verse.org/Simulation }\nusing { /UnrealEngine.com/Temporary/Diagnostics }\n\n\nTeam_Score_Device := class(creative_device):\n\n\n    @editable TeamBlueSettingsDevice: team_settings_and_inventory_device = team_settings_and_inventory_device{}\n    @editable TeamRedSettingsDevice: team_settings_and_inventory_device = team_settings_and_inventory_device{}\n    @editable MainHUD: hud_message_device = hud_message_device{}\n\n    var TeamBlueScore: int = 0\n    var TeamRedScore: int = 0\n\n    TeamsScoreToUI<localizes>(TeamsScore: string)<computes>: message = \"{TeamsScore}\"\n\n    OnBegin<override>()<suspends>:void=\n        TeamBlueSettingsDevice.EnemyEliminatedEvent.Subscribe(OnTeamBlueEnemyEliminated)\n        TeamRedSettingsDevice.EnemyEliminatedEvent.Subscribe(OnTeamRedEnemyEliminated)\n        \n    OnTeamBlueEnemyEliminated(Agent: agent):void=\n        set TeamBlueScore += 1\n        UpdateMainHUD()\n    \n    OnTeamRedEnemyEliminated(Agent: agent):void=\n        set TeamRedScore += 1\n        UpdateMainHUD()\n    \n    UpdateMainHUD():void=\n        HudMessage : string = \"{TeamBlueScore} \\n{TeamRedScore}\"\n        MainHUD.SetText(TeamsScoreToUI(HudMessage))\n        MainHUD.Show()",
+  "external_calls": []
+}

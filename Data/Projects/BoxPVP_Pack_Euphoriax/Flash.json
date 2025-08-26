@@ -1,0 +1,13 @@
+{
+  "file_name": "Flash.verse",
+  "questions": [
+    "How can I create a temporary speed boost ability for a specific class?",
+    "What is the Verse code to activate a `movement_modulator_device` for a player using an item?",
+    "How do I give a power-up to a player only if they have a certain class ID tracked by a tracker?"
+  ],
+  "explanation": "This script defines a 'Flash' device that grants a speed boost power-up to players of a specific class.\n\n- **Class System:** It uses a 'tracker_device' to check if a spawning player's 'Class' ID matches the one set on the device.\n- **Activation:** Players of the correct class are granted an item linked to a 'signal_remote_manager_device'. When the player uses this remote, it triggers the 'SpeedActivation' function.\n- **Core Logic:** The 'SpeedActivation' function simply calls the `.Activate()` method on an editable 'movement_modulator_device', passing in the activating player. This applies the configured speed boost effect to that player.",
+  "code": "using { /Fortnite.com/Devices }\nusing { /Verse.org/Simulation }\nusing { /UnrealEngine.com/Temporary/Diagnostics }\nusing { /Fortnite.com/Characters }\nusing { /UnrealEngine.com/Temporary/SpatialMath }\nusing { /Fortnite.com/Game }\n\nFlash := class(creative_device):\n\n    @editable var Class : int = 0\n    @editable ClassTracker : tracker_device = tracker_device{}\n    @editable HUDablity : hud_message_device = hud_message_device{}\n\n    @editable Speed : movement_modulator_device = movement_modulator_device{}\n    @editable RemoteManager : signal_remote_manager_device = signal_remote_manager_device{}\n    @editable ItemGranter : item_granter_device = item_granter_device{} \n\n    @editable Superpowerused : accolades_device = accolades_device{}\n\n\n    OnBegin<override>()<suspends>:void=\n        RemoteManager.PrimarySignalEvent.Subscribe(SpeedActivation)\n        RemoteManager.SecondarySignalEvent.Subscribe(SpeedActivation)\n        InitSpawners()\n\n    InitSpawners() : void=\n        Spawners := FindCreativeObjectsWithTag(spawner{})\n        for (Obj : Spawners):\n            if (Spawner := player_spawner_device[Obj]):\n                Spawner.SpawnedEvent.Subscribe(OnPlayerSpawned)\n\n    OnPlayerSpawned(Agent : agent): void=\n        if (Player := player[Agent]):\n            spawn{CheckClass(Agent)}\n\n    CheckClass(Agent : agent)<suspends>:void=\n        Sleep(1.0)\n        if(ClassTracker.GetValue(Agent) = Class):\n            ItemGranter.GrantItem(Agent)\n            HUDablity.Show(Agent)\n\n    SpeedActivation(Agent : agent): void=\n        if(ClassTracker.GetValue(Agent) = Class):\n            Superpowerused.Award(Agent)\n            Speed.Activate(Agent)",
+  "external_calls": [
+    "tags.verse"
+  ]
+}

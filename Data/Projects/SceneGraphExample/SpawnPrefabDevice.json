@@ -1,0 +1,13 @@
+{
+  "file_name": "SpawnPrefabDevice.verse",
+  "questions": [
+    "How do I spawn a prefab at a specific location and rotation at runtime using Verse Scene Graph?",
+    "What is the Verse code to add an entity to the world and then remove it later?",
+    "How can I use a trigger volume to spawn and despawn a complex prefab?",
+    "What are `GetSimulationEntity`, `AddEntities`, and `RemoveFromParent` used for in Scene Graph?"
+  ],
+  "explanation": "This script is a `creative_device` that demonstrates the fundamental Scene Graph pattern for dynamically spawning and despawning a prefab. It uses a `volume_device` to control the lifecycle of a 'LightPost' prefab, adding it to the world when a player enters the volume and removing it when they exit.\n\n- **Scene Graph Concepts Demonstrated:**\n  - **Prefab as an `entity`:** The script shows how a complete prefab from the project's assets (`LightPost.P_LightPost{}`) can be stored in an `entity` variable.\n  - `GetSimulationEntity[]`: This function is used to get a reference to the root of the Scene Graph, which represents the entire simulated world. This is a necessary step before you can add new top-level entities.\n  - `SimulationEntity.AddEntities()`: This is the core spawning function. It takes an array of entities and adds them to the world, making them active and visible.\n  - `Entity.RemoveFromParent()`: This is the core despawning function. It removes the entity from the Scene Graph, effectively deleting it from the game until it is spawned again.",
+  "code": "using { /Fortnite.com/Devices }\nusing { /Verse.org/Simulation }\nusing { /Verse.org/SceneGraph }\nusing { /Verse.org/SpatialMath }\nusing { /UnrealEngine.com/Temporary/Diagnostics }\n\nSpawnPrefabDevice := class(creative_device):\n\n    @editable\n    TriggerVolume:volume_device = volume_device{}\n\n    OnBegin<override>()<suspends>:void =\n        PrefabToSpawn:entity = LightPost.P_LightPost{}\n        SpawnTransform:transform = transform:\n            Translation := vector3:\n                Left := -9084.0\n                Up := -8.0\n                Forward := -919.0\n\n        if:\n            SimulationEntity := GetSimulationEntity[]\n        then:\n            loop:\n                race:\n                    block:\n                        TriggerVolume.AgentEntersEvent.Await()\n                        SimulationEntity.AddEntities(array{ PrefabToSpawn })\n                        PrefabToSpawn.SetGlobalTransform(SpawnTransform)\n\n                    block:\n                        TriggerVolume.AgentExitsEvent.Await()\n                        PrefabToSpawn.RemoveFromParent()",
+  "external_calls": [
+  ]
+}

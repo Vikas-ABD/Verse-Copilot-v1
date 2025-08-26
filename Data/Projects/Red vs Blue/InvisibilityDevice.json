@@ -1,0 +1,11 @@
+{
+  "file_name": "InvisibilityDevice.verse",
+  "questions": [
+    "How do I make a player invisible only when they are holding a specific item?",
+    "What is the Verse code for an invisibility cloak that requires a keycard?",
+    "How can I continuously check a player's inventory for an item and change their visibility?"
+  ],
+  "explanation": "This script defines an 'InvisibilityDevice' that turns a player invisible based on whether they are holding a specific item. \n\n- **Core Component:** It uses an '@editable' 'conditional_button_device' not as a button, but as an item detector. You would register a keycard or another item with this device in the UEFN editor.\n\n- **How it Works:**\n  1. When the game begins, the `OnBegin` function spawns a coroutine called `CheckForCard()`.\n  2. `CheckForCard()` runs in an infinite loop, checking every player in the game every 0.2 seconds.\n  3. For each player, it uses `Detector.IsHoldingItem` to see if they possess the required item.\n  4. If the player is holding the item, the script calls the `Hide()` function, which gets the player's character and makes it invisible. \n  5. If the player is not holding the item (or drops it), the script calls `Show()` to make them visible again.",
+  "code": "using { /Fortnite.com/Devices }\nusing { /Verse.org/Simulation }\nusing { /UnrealEngine.com/Temporary/Diagnostics }\nusing { /Fortnite.com/Characters }\n \nInvisibilityDevive := class(creative_device):\n \n    @editable\n    Detector : conditional_button_device = conditional_button_device{}\n \n    CheckForCard()<suspends>:void=\n        loop:\n            Sleep(0.2)\n            AllPlayers:=GetPlayspace().GetPlayers()\n            for(Player:AllPlayers):\n                if(IsAgent:agent = agent[Player]):\n                    if(Detector.IsHoldingItem[IsAgent]):\n                        Hide(IsAgent)\n                    else:\n                        Show(IsAgent)\n        \n    Hide(Agent:agent)<suspends>:void=\n        if(FC:=Agent.GetFortCharacter[]):\n            FC.Hide()\n    Show(Agent:agent):void=\n        if(FC:=Agent.GetFortCharacter[]):\n            FC.Show()\n \n    # Runs when the device is started in a running game\n    OnBegin<override>()<suspends>:void=\n        spawn:\n            CheckForCard()",
+  "external_calls": []
+}
