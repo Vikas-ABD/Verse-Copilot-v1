@@ -5,6 +5,7 @@ from langchain.schema.document import Document
 from langchain_community.vectorstores import FAISS
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from dotenv import load_dotenv
+import time
 
 # --- Configure Logging and Environment ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -128,43 +129,81 @@ my_timer := class():
     print(f"✅ Added {len(custom_docs)} custom documents.")
     return custom_docs
 
-def populate_vector_db(data_folder_path: str, db_path: str, force_recreate: bool = False):
-    """
-    Loads documents from a folder and custom sources, then populates a FAISS
-    vector store.
-    """
+# def populate_vector_db(data_folder_path: str, db_path: str, force_recreate: bool = False):
+#     """
+#     Loads documents from a folder and custom sources, then populates a FAISS
+#     vector store.
+#     """
+#     if os.path.exists(db_path) and not force_recreate:
+#         print(f"✅ FAISS database already exists at '{db_path}'. Skipping population.")
+#         return
+
+#     # 1. Load documents from the JSON files in the specified folder
+#     documents_from_files = load_documents_from_folder(data_folder_path)
+
+#     # 2. Create and add your custom documents
+#     custom_docs = create_custom_documents()
+    
+#     # 3. Combine all documents into one list
+#     all_documents = documents_from_files + custom_docs
+
+#     if not all_documents:
+#         print("❌ No valid documents were loaded or created. Cannot create the database. Exiting.")
+#         return
+
+#     # 4. Populate the FAISS index with the combined documents
+#     print(f"\n⏳ Populating FAISS vector database from a total of {len(all_documents)} documents...")
+#     print("🧠 Creating FAISS index from documents...")
+#     try:
+#         vector_store = FAISS.from_documents(
+#             documents=all_documents,
+#             embedding=embeddings
+#         )
+#         print(f"💾 Saving FAISS index to '{db_path}'...")
+#         vector_store.save_local(db_path)
+#         print(f"✅ FAISS database population complete. Index saved at '{db_path}'.")
+
+#     except Exception as e:
+#         print(f"❌ An error occurred during FAISS index creation: {e}")
+#         print("   Please ensure your GOOGLE_API_KEY is correctly set in your environment.")
+
+
+def populate_vector_db(data_folder_path: str, db_path: str, force_recreate: bool = False, batch_size: int = 5):
     if os.path.exists(db_path) and not force_recreate:
         print(f"✅ FAISS database already exists at '{db_path}'. Skipping population.")
         return
 
-    # 1. Load documents from the JSON files in the specified folder
     documents_from_files = load_documents_from_folder(data_folder_path)
-
-    # 2. Create and add your custom documents
     custom_docs = create_custom_documents()
-    
-    # 3. Combine all documents into one list
     all_documents = documents_from_files + custom_docs
 
     if not all_documents:
-        print("❌ No valid documents were loaded or created. Cannot create the database. Exiting.")
+        print("❌ No valid documents loaded. Exiting.")
         return
 
-    # 4. Populate the FAISS index with the combined documents
-    print(f"\n⏳ Populating FAISS vector database from a total of {len(all_documents)} documents...")
-    print("🧠 Creating FAISS index from documents...")
-    try:
-        vector_store = FAISS.from_documents(
-            documents=all_documents,
-            embedding=embeddings
-        )
+    print(f"\n⏳ Populating FAISS vector database from {len(all_documents)} documents...")
+
+    vector_store = None
+    for i in range(0, len(all_documents), batch_size):
+        batch = all_documents[i:i+batch_size]
+        print(f"🔹 Processing batch {i//batch_size + 1} ({len(batch)} docs)...")
+        try:
+            # Create FAISS index for this batch
+            batch_store = FAISS.from_documents(batch, embeddings)
+
+            if vector_store is None:
+                vector_store = batch_store
+            else:
+                vector_store.merge_from(batch_store)
+
+            time.sleep(5)  # small pause to avoid quota hit
+        except Exception as e:
+            print(f"⚠️ Error with batch {i//batch_size+1}: {e}")
+
+    if vector_store:
         print(f"💾 Saving FAISS index to '{db_path}'...")
         vector_store.save_local(db_path)
-        print(f"✅ FAISS database population complete. Index saved at '{db_path}'.")
-
-    except Exception as e:
-        print(f"❌ An error occurred during FAISS index creation: {e}")
-        print("   Please ensure your GOOGLE_API_KEY is correctly set in your environment.")
+        print(f"✅ FAISS database population complete.")
 
 
 if __name__ == "__main__":

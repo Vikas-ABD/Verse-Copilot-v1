@@ -12,9 +12,6 @@ __pycache__/
 *.py[cod]
 
 # Local Data and Vector Stores (large and machine-specific)
-#Data/
-# Device_context_db/
-# faiss_index/
 
 # Build artifacts and test folders
 verse_build_test/
