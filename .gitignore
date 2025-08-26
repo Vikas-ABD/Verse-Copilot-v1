@@ -1,0 +1,33 @@
+# Secrets - DO NOT COMMIT THESE FILES 🔒
+.env
+frontend/.env
+
+# Python Virtual Environments
+venv/
+.venv/
+env/
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+
+# Local Data and Vector Stores (large and machine-specific)
+Data/
+# Device_context_db/
+# faiss_index/
+
+# Build artifacts and test folders
+verse_build_test/
+build/
+dist/
+output.verse
+
+# Frontend Dependencies (reinstall with 'npm install')
+# This rule will ignore any node_modules folder, including the one in /frontend
+node_modules/
+
+# Other common files to ignore
+.DS_Store
+*.sqlite
+*.sqlite3
+langgraph.json

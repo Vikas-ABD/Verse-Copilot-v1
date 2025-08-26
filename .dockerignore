@@ -1,0 +1,35 @@
+# Git and IDE files
+.git
+.gitignore
+.vscode/
+.idea/
+
+# Python virtual environment and cache
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Node.js dependencies (will be installed inside the container)
+frontend/node_modules/
+node_modules/
+
+# Verse files (as you requested to be excluded)
+*.verse
+
+# Environment files - never commit these to the image
+.env
+*.env.local
+
+# Build artifacts from local builds
+dist/
+build/
+
+# OS-specific files
+*.DS_Store
+Thumbs.db
+
+#data folders
+Data/
+Verse_build_test/

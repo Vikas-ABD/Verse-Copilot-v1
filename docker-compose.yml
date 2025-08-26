@@ -1,0 +1,40 @@
+# Docker Compose file for local development environment
+services:
+  # The backend service running your Python/FastAPI application
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      # Map port 8000 on your local machine to port 8000 in the container
+      - "8000:8000"
+    volumes:
+      # Mount the entire project directory into the container for hot-reloading
+      # Changes to your Python files will be reflected instantly.
+      - ./:/app
+    env_file:
+      # Load environment variables from a .env file in your project root
+      - .env
+    # This command overrides the Dockerfile's CMD for development.
+    # The --reload flag makes uvicorn restart automatically on code changes.
+    command: python -m uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+
+  # The frontend service running the Node.js development server
+  # THIS IS THE NEW, CORRECT BLOCK
+  frontend:
+    image: node:20-slim
+    working_dir: /frontend
+    # This command tells Vite to listen on all network interfaces
+    command: sh -c "npm install && npm run dev -- --host" # <-- Note the --host
+    ports:
+      # We map port 5173 because that's what Vite uses by default
+      - "5173:5173" # <-- Note the port change
+    volumes:
+      - ./frontend:/frontend
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:8000
+      - VITE_WS_URL=ws://localhost:8000
+
+# Note: The 'reports' directory is handled by the backend volume mount.
+# Any reports generated will appear in your local './reports' folder.
