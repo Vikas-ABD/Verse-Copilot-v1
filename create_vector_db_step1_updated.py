@@ -21,7 +21,7 @@ FORCE_RECREATE = True # Set to True to overwrite existing database
 
 # --- Initialize Embeddings ---
     
-embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-005")
+embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
 
 def load_documents_from_folder(folder_path: str) -> list[Document]:
     """
@@ -168,7 +168,7 @@ my_timer := class():
 #         print("   Please ensure your GOOGLE_API_KEY is correctly set in your environment.")
 
 
-def populate_vector_db(data_folder_path: str, db_path: str, force_recreate: bool = False, batch_size: int = 5):
+def populate_vector_db(data_folder_path: str, db_path: str, force_recreate: bool = False, batch_size: int = 50):
     if os.path.exists(db_path) and not force_recreate:
         print(f"✅ FAISS database already exists at '{db_path}'. Skipping population.")
         return
