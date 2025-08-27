@@ -12,6 +12,7 @@ __pycache__/
 *.py[cod]
 
 # Local Data and Vector Stores (large and machine-specific)
+Data/
 
 # Build artifacts and test folders
 verse_build_test/
