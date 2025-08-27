@@ -21,7 +21,7 @@ FORCE_RECREATE = True # Set to True to overwrite existing database
 
 # --- Initialize Embeddings ---
     
-embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-005")
 
 def load_documents_from_folder(folder_path: str) -> list[Document]:
     """

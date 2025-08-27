@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 
 // Helper component to render the structured game plan
 const GamePlanDisplay = ({ summary }: { summary: any }) => {
@@ -74,17 +74,17 @@ const ADD_KNOWLEDGE_ENDPOINT = `${API_URL}/add-knowledge1`;
 const ADD_VIDEO_ENDPOINT = `${API_URL}/summarize-youtube-video`;
 
 const WebSocketClient: React.FC = () => {
-  const [editedQuestions, setEditedQuestions] = useState<string[]>([]); // Replaced 'question' state
+  const [editedQuestions, setEditedQuestions] = useState<string[]>([]);
   const [verseCode, setVerseCode] = useState<string>("");
   const [youtube_url, setVideoUrl] = useState<string>("");
   const [generatedCodes, setGeneratedCodes] = useState<string[]>([]);
   const [currentCodeViewIndex, setCurrentCodeViewIndex] = useState<number>(0);
   const [gamePlanData, setGamePlanData] = useState<any | null>(null);
-  
+
   const [isGeneratingCode, setIsGeneratingCode] = useState<boolean>(false);
   const [isAddingKnowledge, setIsAddingKnowledge] = useState<boolean>(false);
   const [isAddingVideo, setIsAddingVideo] = useState<boolean>(false);
-  
+
   const [copied, setCopied] = useState<boolean>(false);
   const [showVerseInput, setShowVerseInput] = useState<boolean>(false);
   const [showVideoInput, setShowVideoInput] = useState<boolean>(false);
@@ -92,6 +92,8 @@ const WebSocketClient: React.FC = () => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
 
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  // NEW: Create a ref to hold the active WebSocket connection
+  const wsRef = useRef<WebSocket | null>(null);
 
   const handleSubmit = async () => {
     const currentQuestionText = editedQuestions[currentQuestionIndex];
@@ -118,6 +120,8 @@ const WebSocketClient: React.FC = () => {
       if (!job_id) throw new Error("No job_id returned from backend");
 
       const ws = new WebSocket(`${WS_URL_TEMPLATE}${job_id}`);
+      // NEW: Store the WebSocket instance in our ref
+      wsRef.current = ws;
 
       ws.onmessage = (event: MessageEvent) => {
         const msg = JSON.parse(event.data);
@@ -142,7 +146,12 @@ const WebSocketClient: React.FC = () => {
         }
       };
 
-      ws.onclose = () => setIsGeneratingCode(false);
+      ws.onclose = () => {
+        setIsGeneratingCode(false);
+        // NEW: Clean up the ref when the connection closes for any reason
+        wsRef.current = null;
+      };
+      
       ws.onerror = () => {
         const errorMessage = "❌ WebSocket error occurred.";
         setGeneratedCodes(prev => {
@@ -152,6 +161,8 @@ const WebSocketClient: React.FC = () => {
         });
         setCurrentCodeViewIndex(currentQuestionIndex);
         setIsGeneratingCode(false);
+        // NEW: Clean up the ref on error too
+        wsRef.current = null;
       };
     } catch (error) {
       console.error("Job start failed:", error);
@@ -164,6 +175,16 @@ const WebSocketClient: React.FC = () => {
       setCurrentCodeViewIndex(currentQuestionIndex);
       setIsGeneratingCode(false);
     }
+  };
+  
+  // NEW: A function to handle stopping the generation
+  const handleStop = () => {
+      if (wsRef.current) {
+          // Close the WebSocket connection
+          wsRef.current.close();
+          // The onclose event will handle setting isGeneratingCode to false
+          console.log("WebSocket connection closed by user.");
+      }
   };
 
   const handleAddKnowledge = async () => {
@@ -218,7 +239,6 @@ const WebSocketClient: React.FC = () => {
         const summary = result?.summary;
         setGamePlanData(summary);
         
-        // Initialize the editable questions state from the new plan
         if (summary?.stepByStepAgentQuestions) {
             const initialQuestions = summary.stepByStepAgentQuestions.map((q: any) => q.question);
             setEditedQuestions(initialQuestions);
@@ -302,15 +322,24 @@ const WebSocketClient: React.FC = () => {
           />
 
           <div className="flex flex-col sm:flex-row gap-4 justify-start items-center flex-wrap">
-            <button
-              onClick={handleSubmit}
-              disabled={isGeneratingCode}
-              className={`px-6 py-2 rounded-lg text-white transition ${
-                isGeneratingCode ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:bg-gray-900"
-              }`}
-            >
-              {isGeneratingCode ? "Thinking..." : "Submit"}
-            </button>
+            {/* NEW: Conditionally render the correct button based on isGeneratingCode state */}
+            {isGeneratingCode ? (
+              <button
+                onClick={handleStop}
+                className="px-6 py-2 rounded-lg text-white transition bg-red-600 hover:bg-red-700"
+              >
+                Stop
+              </button>
+            ) : (
+              <button
+                onClick={handleSubmit}
+                disabled={isGeneratingCode}
+                className="px-6 py-2 rounded-lg text-white transition bg-black hover:bg-gray-900"
+              >
+                Submit
+              </button>
+            )}
+
             <button
               onClick={() => setShowVerseInput(true)}
               disabled={isAddingKnowledge}
