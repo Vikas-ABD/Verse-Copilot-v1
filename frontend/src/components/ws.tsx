@@ -285,10 +285,28 @@ const WebSocketClient: React.FC = () => {
   const handleCopy = () => {
     const codeToCopy = generatedCodes[currentCodeViewIndex];
     if (codeToCopy) {
-      navigator.clipboard.writeText(codeToCopy).then(() => {
+      // Create a temporary textarea element to hold the text
+      const textArea = document.createElement("textarea");
+      textArea.value = codeToCopy;
+      
+      // Make the textarea invisible and add it to the page
+      textArea.style.position = "fixed";
+      textArea.style.top = "-9999px";
+      textArea.style.left = "-9999px";
+      document.body.appendChild(textArea);
+      
+      // Select and copy the text using the older, more reliable method
+      textArea.select();
+      try {
+        document.execCommand('copy');
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
-      });
+      } catch (err) {
+        console.error('Failed to copy text: ', err);
+      }
+      
+      // Remove the temporary textarea element
+      document.body.removeChild(textArea);
     }
   };
 
