@@ -9,6 +9,14 @@ RUN npm install
 
 # Copy the rest of the frontend source code and build the application
 COPY frontend/ ./
+
+# ---> ADD THESE FOUR LINES <---
+ARG VITE_API_URL
+ARG VITE_WS_URL
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_WS_URL=$VITE_WS_URL
+
+
 RUN npm run build
 
 # ---
