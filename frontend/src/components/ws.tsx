@@ -71,7 +71,7 @@ if (!API_URL || !WS_URL) {
 const API_ENDPOINT = `${API_URL}/generate-code`;
 const WS_URL_TEMPLATE = `${WS_URL}/ws/status/`;
 const ADD_KNOWLEDGE_ENDPOINT = `${API_URL}/add-knowledge1`;
-const ADD_VIDEO_ENDPOINT = `${API_URL}/summarize-youtube-video`;
+const SUMMARIZE_VIDEO_WS_ENDPOINT = `${WS_URL}/ws/summarize-youtube-video`;
 
 const WebSocketClient: React.FC = () => {
   const [editedQuestions, setEditedQuestions] = useState<string[]>([]);
@@ -92,7 +92,6 @@ const WebSocketClient: React.FC = () => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
 
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
-  // NEW: Create a ref to hold the active WebSocket connection
   const wsRef = useRef<WebSocket | null>(null);
 
   const handleSubmit = async () => {
@@ -120,7 +119,6 @@ const WebSocketClient: React.FC = () => {
       if (!job_id) throw new Error("No job_id returned from backend");
 
       const ws = new WebSocket(`${WS_URL_TEMPLATE}${job_id}`);
-      // NEW: Store the WebSocket instance in our ref
       wsRef.current = ws;
 
       ws.onmessage = (event: MessageEvent) => {
@@ -148,7 +146,6 @@ const WebSocketClient: React.FC = () => {
 
       ws.onclose = () => {
         setIsGeneratingCode(false);
-        // NEW: Clean up the ref when the connection closes for any reason
         wsRef.current = null;
       };
       
@@ -161,28 +158,24 @@ const WebSocketClient: React.FC = () => {
         });
         setCurrentCodeViewIndex(currentQuestionIndex);
         setIsGeneratingCode(false);
-        // NEW: Clean up the ref on error too
         wsRef.current = null;
       };
     } catch (error) {
       console.error("Job start failed:", error);
       const errorMessage = "❌ Failed to start job. Please check the backend.";
        setGeneratedCodes(prev => {
-            const newCodes = [...prev];
-            newCodes[currentQuestionIndex] = errorMessage;
-            return newCodes;
-        });
+           const newCodes = [...prev];
+           newCodes[currentQuestionIndex] = errorMessage;
+           return newCodes;
+       });
       setCurrentCodeViewIndex(currentQuestionIndex);
       setIsGeneratingCode(false);
     }
   };
   
-  // NEW: A function to handle stopping the generation
   const handleStop = () => {
       if (wsRef.current) {
-          // Close the WebSocket connection
           wsRef.current.close();
-          // The onclose event will handle setting isGeneratingCode to false
           console.log("WebSocket connection closed by user.");
       }
   };
@@ -224,42 +217,56 @@ const WebSocketClient: React.FC = () => {
     if (!youtube_url.trim()) return;
     setIsAddingVideo(true);
     setGamePlanData(null);
-    setMessage("");
-    try {
-      const response = await fetch(ADD_VIDEO_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          youtube_url: youtube_url,
-        }),
-      });
+    setMessage("Connecting to summarization service...");
 
-      const result = await response.json();
-      if (response.ok) {
-        const summary = result?.summary;
-        setGamePlanData(summary);
+    const ws = new WebSocket(SUMMARIZE_VIDEO_WS_ENDPOINT);
+
+    ws.onopen = () => {
+        console.log("WebSocket connection opened for video summarization.");
+        ws.send(JSON.stringify({ youtube_url }));
+    };
+
+    ws.onmessage = (event) => {
+        const result = JSON.parse(event.data);
         
-        if (summary?.stepByStepAgentQuestions) {
-            const initialQuestions = summary.stepByStepAgentQuestions.map((q: any) => q.question);
-            setEditedQuestions(initialQuestions);
-        } else {
-            setEditedQuestions([]);
+        if (result.status === "processing") {
+            setMessage(`⏳ ${result.message}`);
+        } else if (result.status === "success") {
+            const summary = result?.summary;
+            setGamePlanData(summary);
+            
+            if (summary?.stepByStepAgentQuestions) {
+                const initialQuestions = summary.stepByStepAgentQuestions.map((q: any) => q.question);
+                setEditedQuestions(initialQuestions);
+            } else {
+                setEditedQuestions([]);
+            }
+            setCurrentQuestionIndex(0);
+            setGeneratedCodes([]);
+            setCurrentCodeViewIndex(0);
+            setMessage("✅ Game plan generated successfully!");
+            ws.close();
+        } else if (result.status === "error") {
+            console.error("Error from summarization WebSocket:", result.message);
+            setMessage(`⚠️ Failed: ${result.message || "Unknown error."}`);
+            ws.close();
         }
+    };
 
-        setCurrentQuestionIndex(0);
-        setGeneratedCodes([]);
-        setCurrentCodeViewIndex(0);
-      } else {
-        setMessage(`⚠️ Failed: ${result?.detail || "Unknown error."}`);
-      }
-    } catch (error) {
-      console.error("Error in add-video:", error);
-      setMessage("❌ Request failed. Check the server.");
-    } finally {
-      setIsAddingVideo(false);
-      setShowVideoInput(false);
-      setVideoUrl("");
-    }
+    ws.onerror = (error) => {
+        console.error("Error in add-video WebSocket:", error);
+        setMessage("❌ WebSocket connection failed. Check the server.");
+        setIsAddingVideo(false);
+    };
+
+    ws.onclose = () => {
+        console.log("WebSocket connection closed for video summarization.");
+        // Clear the message 5 seconds after the connection closes
+        setTimeout(() => setMessage(""), 5000);
+        setIsAddingVideo(false);
+        setShowVideoInput(false);
+        setVideoUrl("");
+    };
   };
   
   const handleNextQuestion = () => {
@@ -285,17 +292,14 @@ const WebSocketClient: React.FC = () => {
   const handleCopy = () => {
     const codeToCopy = generatedCodes[currentCodeViewIndex];
     if (codeToCopy) {
-      // Create a temporary textarea element to hold the text
       const textArea = document.createElement("textarea");
       textArea.value = codeToCopy;
       
-      // Make the textarea invisible and add it to the page
       textArea.style.position = "fixed";
       textArea.style.top = "-9999px";
       textArea.style.left = "-9999px";
       document.body.appendChild(textArea);
       
-      // Select and copy the text using the older, more reliable method
       textArea.select();
       try {
         document.execCommand('copy');
@@ -305,7 +309,6 @@ const WebSocketClient: React.FC = () => {
         console.error('Failed to copy text: ', err);
       }
       
-      // Remove the temporary textarea element
       document.body.removeChild(textArea);
     }
   };
@@ -340,7 +343,6 @@ const WebSocketClient: React.FC = () => {
           />
 
           <div className="flex flex-col sm:flex-row gap-4 justify-start items-center flex-wrap">
-            {/* NEW: Conditionally render the correct button based on isGeneratingCode state */}
             {isGeneratingCode ? (
               <button
                 onClick={handleStop}

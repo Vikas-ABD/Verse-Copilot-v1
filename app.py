@@ -195,33 +195,84 @@ async def add_knowledge1_entry(entry: KnowledgeBase1Request):
 
 
 
-# --- NEW: YouTube Summarization Endpoint ---
-@app.post("/summarize-youtube-video", summary="Generate a summary from a YouTube URL")
-async def summarize_youtube_video(request: YouTubeSummarizationRequest):
-    """
-    Receives a YouTube URL, generates a summary using the Gemini API,
-    and returns the summary.
-    """
-    logger.info(f"Received request to summarize YouTube URL: {request.youtube_url}")
+# # --- NEW: YouTube Summarization Endpoint ---
+# @app.post("/summarize-youtube-video", summary="Generate a summary from a YouTube URL")
+# async def summarize_youtube_video(request: YouTubeSummarizationRequest):
+#     """
+#     Receives a YouTube URL, generates a summary using the Gemini API,
+#     and returns the summary.
+#     """
+#     logger.info(f"Received request to summarize YouTube URL: {request.youtube_url}")
 
-    try:
-        # Call the async function from our new service file
-        summary_text = await  process_youtube_url(request.youtube_url)
+#     try:
+#         # Call the async function from our new service file
+#         summary_text = await  process_youtube_url(request.youtube_url)
 
-        # Return the successful response
-        return {
-            "status": "success",
-            "youtube_url": request.youtube_url,
-            "summary": summary_text
-        }
-    except Exception as e:
-        # Catch potential exceptions from the API call and return a proper HTTP error
-        logger.error(f"Failed to summarize video. Error: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate video summary. Error: {str(e)}"
-        )
+#         # Return the successful response
+#         return {
+#             "status": "success",
+#             "youtube_url": request.youtube_url,
+#             "summary": summary_text
+#         }
+#     except Exception as e:
+#         # Catch potential exceptions from the API call and return a proper HTTP error
+#         logger.error(f"Failed to summarize video. Error: {e}", exc_info=True)
+#         raise HTTPException(
+#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#             detail=f"Failed to generate video summary. Error: {str(e)}"
+#         )
     
+
+
+# --- NEW: YouTube Summarization WebSocket ---
+@app.websocket("/ws/summarize-youtube-video")
+async def summarize_youtube_video_ws(websocket: WebSocket):
+    """
+    WebSocket endpoint for summarizing YouTube videos.
+    Expects a JSON payload: {"youtube_url": "<url>"}
+    """
+    await websocket.accept()
+    try:
+        while True:
+            # Receive message from client
+            data = await websocket.receive_json()
+            youtube_url = data.get("youtube_url")
+
+            if not youtube_url:
+                await websocket.send_json({
+                    "status": "error",
+                    "message": "Missing 'youtube_url' in request"
+                })
+                continue
+
+            logger.info(f"Received request to summarize YouTube URL: {youtube_url}")
+
+            try:
+                # Send acknowledgment
+                await websocket.send_json({
+                    "status": "processing",
+                    "message": f"Started Working on  {youtube_url}"
+                })
+
+                # Process the YouTube video
+                summary_text = await process_youtube_url(youtube_url)
+
+                # Send the summary back
+                await websocket.send_json({
+                    "status": "success",
+                    "youtube_url": youtube_url,
+                    "summary": summary_text
+                })
+
+            except Exception as e:
+                logger.error(f"Failed to summarize video. Error: {e}", exc_info=True)
+                await websocket.send_json({
+                    "status": "error",
+                    "message": f"Failed to generate summary. Error: {str(e)}"
+                })
+
+    except WebSocketDisconnect:
+        logger.info("WebSocket connection closed by client")
 
 
 
